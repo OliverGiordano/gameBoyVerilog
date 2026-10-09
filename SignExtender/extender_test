@@ -1,0 +1,46 @@
+#! /opt/homebrew/Cellar/icarus-verilog/13.0/bin/vvp
+:ivl_version "13.0 (stable)" "(v13_0)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/system.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/va_math.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/v2009.vpi";
+S_0x103101290 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x1031002d0 .scope module, "SignExtender_TB" "SignExtender_TB" 3 1;
+ .timescale 0 0;
+v0x103105d10_0 .var "Number", 7 0;
+v0x103105dd0_0 .net "NumberOut", 15 0, L_0x103106070;  1 drivers
+S_0x103100450 .scope module, "dut" "SignExtender" 3 5, 4 1 0, S_0x1031002d0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 8 "Number";
+    .port_info 1 /OUTPUT 16 "ExtendedNumber";
+v0x103101410_0 .net "ExtendedNumber", 15 0, L_0x103106070;  alias, 1 drivers
+v0x103105b20_0 .net "Number", 7 0, v0x103105d10_0;  1 drivers
+v0x103105bd0_0 .net *"_ivl_1", 0 0, L_0x103105e90;  1 drivers
+v0x103105c70_0 .net *"_ivl_3", 7 0, L_0x103105f90;  1 drivers
+L_0x103105e90 .part v0x103105d10_0, 7, 1;
+L_0x103105f90 .repeat 8, 8, L_0x103105e90;
+L_0x103106070 .concat [ 8 8 0 0], v0x103105d10_0, L_0x103105f90;
+    .scope S_0x1031002d0;
+T_0 ;
+    %vpi_call/w 3 7 "$dumpfile", "SignExtender.vcd" {0 0 0};
+    %vpi_call/w 3 8 "$dumpvars", 32'sb00000000000000000000000000000000, S_0x1031002d0 {0 0 0};
+    %pushi/vec4 255, 0, 8;
+    %store/vec4 v0x103105d10_0, 0, 8;
+    %delay 10, 0;
+    %pushi/vec4 127, 0, 8;
+    %store/vec4 v0x103105d10_0, 0, 8;
+    %delay 10, 0;
+    %end;
+    .thread T_0;
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "-";
+    "SignExtender_TB.sv";
+    "SignExtender.sv";

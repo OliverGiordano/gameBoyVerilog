@@ -1,0 +1,42 @@
+# Verilator default output directory
+obj_dir/
+
+# Waveform output files (from test runs)
+*.vcd
+*.fst
+*.lxt
+*.vpd
+
+# Compiled testbench executables
+*.exe
+*.out
+a.out
+
+# Log files and run outputs
+*.log
+*.jou
+*.pb
+
+# C/C++ build artifacts (in case they leak outside obj_dir)
+*.o
+*.d
+*.a
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Hex memory dumps and bitstreams
+*.hex
+*.ihex
+*.mif
+
+# Game Boy compiled ROMs and emulator data
+*.gb
+*.gbc
+*.sav
+*.sym
+*.map
+
+# Waveform viewer state/config files
+*.ron

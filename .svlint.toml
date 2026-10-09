@@ -1,0 +1,7 @@
+[option]
+linter = true
+copyright_notice = false
+
+[option.build]
+top_module = "top"      # or whatever your top-level module is called
+include_dirs = ["./rtl", "./tb"]
