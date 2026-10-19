@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
     static uint32_t px[160 * 144];
     const uint32_t pal[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
     const Uint64 freq = SDL_GetPerformanceFrequency();
-    const Uint64 frameTicks = (Uint64)(freq * 70224.0 / 4194304.0);
+    const Uint64 frameTicks = (Uint64)(freq * (70224.0 / 4194304.0));
     Uint64 next = SDL_GetPerformanceCounter();
     Uint64 fpsStart = next; int frames = 0;
     bool running = true;
@@ -126,6 +126,11 @@ int main(int argc, char** argv) {
         if (k[SDL_SCANCODE_RSHIFT]) b |= 1 << 6;   // Select
         if (k[SDL_SCANCODE_RETURN]) b |= 1 << 7;   // Start
         top->Buttons = b;
+
+        for (int i = 0; i < 4; i++) {
+            top->Clock = 1; top->Clock25 = 1; top->eval();
+            top->Clock = 0; top->Clock25 = 0; top->eval();
+        }
 
         for (int i = 0; i < 70224; i++) {
             top->Clock = 1; top->eval();

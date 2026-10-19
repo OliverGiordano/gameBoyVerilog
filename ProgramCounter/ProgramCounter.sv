@@ -6,8 +6,8 @@ module ProgramCounter(
     );
 
     always_ff @(posedge Clock, posedge Reset) begin
-        if(Reset) Pc <= 16'h0000;
-        //if(Reset) Pc <= 16'h0100;
+        //if(Reset) Pc <= 16'h0000;
+        if(Reset) Pc <= 16'h0100;
         else Pc <= PcNext;
     end
 endmodule

@@ -7,7 +7,7 @@ module Shifter(
     );
 
     always_comb begin
-        case (ShiftMode) 
+        case (ShiftMode)
             3'b000: begin
                 Dout = {Din[6:0], Din[7]};// circular shift
                 FlagsOut = {~|Dout, 2'b00, Din[7], 4'b0}; end

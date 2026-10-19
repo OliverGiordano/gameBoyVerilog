@@ -6,7 +6,7 @@ module ControlUnit (
         output logic IncrementPc, We, UseConditional, NoCarry, AluInputControl, RamWe, WideWrite,
                      WideRead, ForceZero, SpEnable, HighMemSelect, SpOpp, WideInCrtl,
                      WideAluControl, WideAluInCrtl1, WideAluInCrtl2, ClearIF,
-        output logic [2:0] WriteSelect, ShiftMode,
+        output logic [2:0] WriteSelect, ShiftMode, FlagSelect,
         output logic [2:0] Reg1, Reg2, Reg3,
         output logic [3:0] AluOp,
         output logic [7:0] WriteData,
@@ -52,6 +52,7 @@ module ControlUnit (
                         opCode1 <= OpCode;
                         IncrementPc <= 0;
                         Ime <= 0;
+                        ImeReEnable <= 0;
                         currentState <= EXECUTE; end
                     8'hFB: begin
                         opCode1 <= OpCode;
@@ -281,7 +282,6 @@ module ControlUnit (
                     ImeReEnable <= 0;
                 end
                 if (opCode1 == 8'hFB) ImeReEnable <= 1;
-
                 if (opCode1 == 8'h2A || opCode1 == 8'h3A) begin
                     opCode1 <= (opCode1 == 8'h2A) ? 8'h23 : 8'h2B;   // INC HL / DEC HL
                     IncrementPc <= 0;
@@ -339,11 +339,14 @@ module ControlUnit (
         AluOp = 0;
         HighMemSelect = 0;
         ShiftMode = 0;
+        FlagSelect = 0;
         if(currentState == POPBYTE1) begin
             RamWe = 0;
-            WriteSelect = 3'b011;
+            //WriteSelect = 3'b011;
+            WriteSelect = (opCode1[5:4] == 2'b11) ? 3'b101 : 3'b011;
+            FlagSelect = (opCode1[5:4] == 2'b11) ? 3'b101 : 3'b011;
             //Reg3 = 2*opCode1[5:4]+1;
-            Reg3 = 2*opCode1[5:4];
+            Reg3 = (opCode1[5:4] == 2'b11) ? 3'd6: 2*opCode1[5:4]+1;
             //WideCuOut = 16'b1;
             SpOpp = 0;
             SpEnable = 1;
@@ -354,10 +357,10 @@ module ControlUnit (
             RamInSelect = 0;
             ConditionSelect = opCode1[4:3];
             if(opCode1 == 8'hC9 || opCode1 == 8'hD9) begin
-                Jump = 3'b100;
+                Jump = 3'b101;
                 UseConditional = 0; end
             else if(opCode1[7:5] == 3'b110 && opCode1[2:0] == 3'b000) begin
-                Jump = 3'b100;
+                Jump = 3'b101;
                 UseConditional = 1; end
             else begin
                 Jump = 3'b000;
@@ -366,10 +369,11 @@ module ControlUnit (
             RamInSelect = 2'b00;
         end else if(currentState == PUSHBYTE1) begin
             RamWe = 1;
-            Reg2 = 2*opCode1[5:4]+1;
+            //Reg2 = 2*opCode1[5:4]+1;
+            Reg2 = (opCode1[5:4] == 2'b11) ? 3'd7 : 2*opCode1[5:4];
             casez(opCode1)
                 8'b11???111, 8'hCD, 8'b110??100 : begin
-                    RamInSelect = 2'b01; end
+                    RamInSelect = 2'b10; end
                 default: begin
                     RamInSelect = 2'b00; end
             endcase
@@ -422,6 +426,7 @@ module ControlUnit (
                 8'b001??111: begin
                     AluInputControl = 0;
                     WriteSelect = 0;
+                    FlagSelect = 0;
                     We = 1;
                     Reg1 = 3'b111;
                     Reg3 = 3'b111;
@@ -438,6 +443,7 @@ module ControlUnit (
                 8'b110??000: begin
                     AluInputControl = 0;
                     WriteSelect = 0;
+                    FlagSelect = 0;
                     We = 0;
                     RamWe = 0;
                     WideRead = 0;
@@ -445,7 +451,7 @@ module ControlUnit (
                     SpEnable = 1;
                     WideWrite = 0;
                     LoadSp = 3'b001;
-                    Jump = 3'b101;
+                    Jump = 3'b110;
                     ConditionSelect = opCode1[4:3];
                     UseConditional = 1; end
                 8'b00??0011: begin
@@ -458,6 +464,7 @@ module ControlUnit (
                     Reg3 = {1'b0, opCode1[5:4]};
                     We = 1;
                     WriteSelect = 3'b001;
+                    FlagSelect = 3'b001;
                     Jump = 0;
                     UseConditional = 0;
                     RamWe = 0;
@@ -470,12 +477,14 @@ module ControlUnit (
                     WideRead = 1;
                     HighMem = 2'b00;                                     // ram addr = wideRegOut
                     WriteSelect = 3'b001;
+                    FlagSelect = 3'b001;
                     if (opCode1[5]) begin                                // HL+ / HL-
                         WideWrite = 1; We = 1;
                         Reg3 = 3'b010;
                         WideInCrtl = 1; WideAluInCrtl1 = 1; WideAluInCrtl2 = 0;
                         WideAluControl = 0;
                         WriteSelect = 3'b001;
+                        FlagSelect = 3'b001;
                         WriteData = opCode1[4] ? 8'hFF : 8'h01;          // 0x32 = HL-, 0x22 = HL+
                     end else begin
                         WideWrite = 0; We = 0;
@@ -490,6 +499,7 @@ module ControlUnit (
                     HighMem = 2'b00;
                     Reg3 = 3'b111;          // A
                     WriteSelect = 3'b011;   // data from ramOut
+                    FlagSelect = 3'b011;
                     We = 1;
                     WideWrite = 0;          // see note: HL+/HL- not handled yet
                     SpEnable = 0; LoadSp = 3'b010; Jump = 3'b000;
@@ -505,6 +515,7 @@ module ControlUnit (
                     Reg3 = {1'b0, opCode1[5:4]};
                     We = 1;
                     WriteSelect = 3'b001;
+                    FlagSelect = 3'b001;
                     Jump = 0;
                     UseConditional = 0;
                     RamWe = 0;
@@ -522,6 +533,7 @@ module ControlUnit (
                     Reg3 = 3'b010;
                     We = 1;
                     WriteSelect = 3'b111;
+                    FlagSelect = 3'b111;
                     Jump = 0;
                     UseConditional = 0;
                     RamWe = 0;
@@ -537,7 +549,7 @@ module ControlUnit (
                     SpEnable = 1;
                     WideWrite = 0;
                     LoadSp = 3'b001;
-                    Jump = 3'b101;
+                    Jump = 3'b110;
                     UseConditional = 0; end
                 8'h00: begin //No op
                     AluInputControl = 1'b0;
@@ -587,7 +599,8 @@ module ControlUnit (
                     Jump = 3'b000;
                     SpEnable = 0;
                     RamInSelect = 0;
-                    WriteSelect = 3'b100; end
+                    WriteSelect = 3'b100;
+                    FlagSelect = 3'b100; end
                 8'h0F: begin //rrca
                     RamWe = 0;
                     Reg1 = 3'b111;
@@ -601,6 +614,7 @@ module ControlUnit (
                     Jump = 3'b000;
                     SpEnable = 0;
                     RamInSelect = 0;
+                    FlagSelect = 3'b100;
                     WriteSelect = 3'b100; end
                 8'h17: begin //rla
                     RamWe = 0;
@@ -615,6 +629,7 @@ module ControlUnit (
                     SpEnable = 0;
                     LoadSp = 3'b010;
                     RamInSelect = 0;
+                    FlagSelect = 3'b100;
                     WriteSelect = 3'b100; end
                 8'h1F: begin //rra
                     RamWe = 0;
@@ -629,6 +644,7 @@ module ControlUnit (
                     Jump = 3'b000;
                     SpEnable = 0;
                     RamInSelect = 0;
+                    FlagSelect = 3'b100;
                     WriteSelect = 3'b100; end
                 8'hF9: begin
                     RamWe = 0;
@@ -639,11 +655,13 @@ module ControlUnit (
                     UseConditional = 0;
                     Jump = 3'b000;
                     RamInSelect = 0;
+                    FlagSelect = 3'b000;
                     WriteSelect = 3'b000; end
                 8'hE8: begin
                     RamWe = 0;
                     Reg1 = 3'b111;
                     Reg3 = 3'b111;
+                    FlagSelect = 3'b111;
                     WriteSelect = 3'b111;
                     AluInputControl = 1;
                     We = 1;
@@ -655,6 +673,7 @@ module ControlUnit (
                 8'hF8: begin
                     RamWe = 0;
                     Reg3 = 3'b010;
+                    FlagSelect = 3'b111;
                     WriteSelect = 3'b111;
                     We = 1;
                     Jump = 3'b000;
@@ -664,7 +683,7 @@ module ControlUnit (
                     WriteData = opCode2;
                     WideInCrtl = 1; end
                 8'b11001011: begin // shifts
-                    if(opCode1 == 8'hCB) begin
+                    if(opCode2[7:6] == 2'b00) begin
                         We = 1;
                         RamWe = 0;
                         Jump = '0;
@@ -674,7 +693,9 @@ module ControlUnit (
                         UseConditional = 0;
                         Reg1 = opCode2[2:0];
                         Reg3 = opCode2[2:0];
-                        WriteSelect = 3'b110;
+                        ShiftMode = opCode2[5:3];
+                        FlagSelect = 3'b100;
+                        WriteSelect = 3'b100;
                         WriteData = opCode2; end
                     else begin
                         RamWe = 0;
@@ -689,7 +710,9 @@ module ControlUnit (
                         Jump = 3'b000;
                         SpEnable = 0;
                         RamInSelect = 0;
-                        WriteSelect = 3'b100; end
+                        WriteData = opCode2;
+                        FlagSelect = 3'b110;
+                        WriteSelect = 3'b110; end
                     end
                 8'b11100010: begin // loading to special ram
                     Reg1 = 3'b001; // C  // 1 byte
@@ -737,6 +760,7 @@ module ControlUnit (
                     We = 1;
                     UseConditional = 0;
                     Jump = 3'b000;
+                    FlagSelect = 3'b011;
                     WriteSelect = 3'b011;
                     RamInSelect = 0;
                     LoadSp = 3'b010;
@@ -753,6 +777,7 @@ module ControlUnit (
                     We = 1;
                     WriteData = opCode2;
                     RamInSelect = 0;
+                    FlagSelect = 3'b011;
                     WriteSelect = 3'b011; end
                 8'b11111010: begin
                     HighMem = 2'b10;
@@ -764,6 +789,7 @@ module ControlUnit (
                     We = 1;
                     WideCuOut = {opCode3, opCode2};
                     RamInSelect = 0;
+                    FlagSelect = 3'b011;
                     WriteSelect = 3'b011; end
                 8'b11??0?01: begin // push / pop from stack
                     SpEnable = 1;
@@ -771,7 +797,10 @@ module ControlUnit (
                     if(opCode1[2] == 0) begin // pop
                         RamWe = 0;
                         //Reg3 = 2*opCode1[5:4];
-                        Reg3 = 2*opCode1[5:4]+1;
+                        //Reg3 = 2*opCode1[5:4]+1;
+                        //(opCode1[5:4] == 2'b11)
+                        Reg3 = (opCode1[5:4] == 2'b11) ? 3'd7 : 2*opCode1[5:4];
+                        FlagSelect = 3'b011;
                         WriteSelect = 3'b011;
                         SpOpp = 0;
                         //WideCuOut = 16'b1;
@@ -781,6 +810,7 @@ module ControlUnit (
                     else begin // push
                         RamWe = 1;
                         Reg2 = 2*opCode1[5:4];
+                        Reg2 = (opCode1[5:4] == 2'b11) ? 3'd6 : 2*opCode1[5:4]+1;
                         //WideCuOut = 16'b0;
                         LoadSp = 3'b010;
                         //SpEnable = 0;
@@ -792,7 +822,7 @@ module ControlUnit (
                 8'hCD: begin //load sp
                     RamWe = 1;
                     //WriteData = opCode3;
-                    RamInSelect = 2'b10;
+                    RamInSelect = 2'b01;
                     LoadSp = 3'b010;
                     //WideCuOut = 16'b1111111111111111;
                     SpOpp = 1;
@@ -805,9 +835,10 @@ module ControlUnit (
                     Jump = 3'b011; end
                 8'b110??100: begin // jump cond
                     RamWe = 1;
-                    RamInSelect = 2'b10;
+                    RamInSelect = 2'b01;
                     //WideCuOut = 16'b1111111111111111;
-                    LoadSp = 3'b001;
+                    //LoadSp = 3'b001;
+                    LoadSp = 3'b010;
                     SpOpp = 1;
                     SpEnable = 1;
                     We = 0;
@@ -819,7 +850,7 @@ module ControlUnit (
                     Jump = 3'b011; end
                 8'b11???111: begin
                     RamWe = 1;
-                    RamInSelect = 2'b10;
+                    RamInSelect = 2'b01;
                     //WideCuOut = 16'b1111111111111111;
                     SpOpp = 1;
                     LoadSp = 3'b010;
@@ -876,6 +907,7 @@ module ControlUnit (
                         ForceZero = 0;
                         UseConditional = 0;
                         Jump = 3'b000;
+                        FlagSelect = 3'b011;
                         WriteSelect = 3'b011;
                     end else begin
                         RamWe = 0;
@@ -891,6 +923,7 @@ module ControlUnit (
                         UseConditional = 0;
                         Jump = 3'b000;
                         NoCarry = 0;
+                        FlagSelect = 3'b001;
                         WriteSelect = 3'b010;
                     end
                 end
@@ -909,6 +942,7 @@ module ControlUnit (
                     ForceZero = 0;
                     UseConditional = 0;
                     RamInSelect = 0;
+                    FlagSelect = 3'b001;
                     WriteSelect = 3'b001;
                 end
                 8'b00??0001: begin  // write imm16
@@ -923,7 +957,8 @@ module ControlUnit (
                         WideCuOut = {opCode3, opCode2};
                     end else begin
                         WideWrite = 1;
-                        WriteSelect = 3'b000;
+                        FlagSelect = 3'b001;
+                        WriteSelect = 3'b001;
                         WideRead = 0;
                         RamWe = 0;
                         Jump = 3'b000;
@@ -938,6 +973,7 @@ module ControlUnit (
                     end
                 end
                 8'b10??????: begin // alu math
+                    FlagSelect = 3'b000;
                     WriteSelect = 3'b000; ///
                     We = 1;
                     RamWe = 0;
@@ -957,6 +993,7 @@ module ControlUnit (
                     RamInSelect = 0;
                 end
                 8'b00???10?: begin
+                    FlagSelect = 3'b000;
                     WriteSelect = 3'b000;
                     We = 1;
                     RamWe = 0;
@@ -1016,6 +1053,7 @@ module ControlUnit (
                     SpEnable = 0;
                     LoadSp = 0;
                     WriteData = opCode2;
+                    FlagSelect = 3'b000;
                     WriteSelect = 3'b000;
                     AluInputControl = 1;
                     UseConditional = 0;
@@ -1025,11 +1063,13 @@ module ControlUnit (
                     Reg3 = 3'b111; end
                 default: begin
                     RamWe = 0;
+                    FlagSelect = 3'b000;
                     WriteSelect = 0;
                 end
             endcase
         end else begin
             AluInputControl = 1'b0;
+            FlagSelect = 3'b000;
             WriteSelect = 0;
             We = 0;
             RamWe = 0;

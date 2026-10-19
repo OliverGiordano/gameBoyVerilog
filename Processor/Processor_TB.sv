@@ -28,6 +28,8 @@ module Processor_TB;
         $dumpvars(0, Processor_TB.dut.rf.registers[7]);
         $dumpvars(0, Processor_TB.dut.mmu.ifData);
         $dumpvars(0, Processor_TB.dut.mmu.ieData);
+        $dumpvars(0, Processor_TB.dut.mmu.ram.mem[49152]);
+        $dumpvars(0, Processor_TB.dut.mmu.ieData);
 
         // reset first
         Clock = 0;
@@ -36,7 +38,7 @@ module Processor_TB;
         Reset = 0;
 
         // then run about one frame
-        for (int i = 0; i < 65700; i++) begin
+        for (int i = 0; i < 140000; i++) begin
             Clock = 1; #10; Clock = 0; #10;
         end
 
