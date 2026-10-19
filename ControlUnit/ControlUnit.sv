@@ -12,7 +12,8 @@ module ControlUnit (
         output logic [7:0] WriteData,
         output logic [1:0] ConditionSelect, HighMem, RamInSelect,
         output logic [2:0] Jump, LoadSp,
-        output logic [15:0] WideCuOut
+        output logic [15:0] WideCuOut,
+        output logic OtherAluInputControl
     );
     // Interesting: the stack pointer points to two bytes, (16 bits) this
     // means we /
@@ -340,6 +341,7 @@ module ControlUnit (
         HighMemSelect = 0;
         ShiftMode = 0;
         FlagSelect = 0;
+        OtherAluInputControl = 0;
         if(currentState == POPBYTE1) begin
             RamWe = 0;
             //WriteSelect = 3'b011;
@@ -1010,7 +1012,18 @@ module ControlUnit (
                     WriteData = 8'b00000001;
                     RamInSelect = 0;
                     Reg1 = opCode1[5:3];
-                    Reg3 = opCode1[5:3]; end
+                    Reg3 = opCode1[5:3];
+                    if(opCode1[5:3] == 3'b110) begin
+                        WideRead = 0;
+                        OtherAluInputControl = 1;
+                        HighMem = 0;
+                        RamWe = 1;
+                        RamInSelect = 2'b11;
+                        We = 1;
+                        Reg3 = 3'd6;
+                        Reg1 = 3'b010;
+                    end
+                end
                 8'b00011000: begin // Unconditional Jump
                     //WriteSelect = 2'bxx // I dont care bc Im not writing
                     We = 0;

@@ -56,6 +56,7 @@ module Processor(
     logic wideAluInCtrl1, wideAluInCtrl2, wideAluControl;
     logic [7:0] iF, iE;
     logic clearIF;
+    logic otherAluInputControl;
 
     logic [7:0] cuOpcode;
     //assign cuOpcode = (Pc >= 16'hFF80) ? 8'hC9 : OpCode;
@@ -72,9 +73,11 @@ module Processor(
                    .HighMemSelect(highMemInputSelect),.RamInSelect(ramInSelect),.SpOpp(spOpp),
                    .WideInCrtl(wideInCrtl), .WideAluInCrtl1(wideAluInCtrl1),
                    .WideAluInCrtl2(wideAluInCtrl2), .WideAluControl(wideAluControl),
-                   .IFin(iF), .IEin(iE), .ClearIF(clearIF), .FlagSelect(flagSelect));
+                   .IFin(iF), .IEin(iE), .ClearIF(clearIF), .FlagSelect(flagSelect),
+                   .OtherAluInputControl(otherAluInputControl));
 
     logic [7:0] AluIn1, AluIn2,  AluOut;
+    logic [7:0] rfAluOut1;
     logic [7:0] regFlagsIn;
     logic [7:0] aluRegFlagsOut;
     logic [7:0] regFlagsOut;
@@ -98,7 +101,7 @@ module Processor(
     logic [7:0] curA;
     assign curA = aluInputControl ? AluIn1 : rfOut2;
     RegisterFile rf(.Clock, .Reset, .Addr1(RegIn1), .Addr2(RegIn2), .Addr3(RegIn3),
-                    .RegIn(rfWriteIn), .Out1(AluIn1), .Out2(rfOut2), .FlagsOut(regFlagsOut),
+                    .RegIn(rfWriteIn), .Out1(rfAluOut1), .Out2(rfOut2), .FlagsOut(regFlagsOut),
                     .FlagsIn(regFlagsIn), .WideRead(wideRead), .WideWrite(wideWrite),
                     .We(WriteEnable), .WideRegIn(wideRegLoad), .WideRegOut(wideRegOut),
                     .WideRegOut2(wideRegOut2));
@@ -186,126 +189,11 @@ module Processor(
             pix <= 0;
         end
     end
-integer frameNo = 0;
-always_ff @(posedge Clock) begin
-    if (vBlankPulse && frameNo < 600) begin
-        frameNo <= frameNo + 1;
-        $display("f=%0d PC=%04h SP=%04h IE=%02h IF=%02h IME=%b IMErd=%b state=%0d opcode =%0h",
-                 frameNo, Pc, sp, iE, iF, cu.Ime, cu.ImeReEnable, cu.currentState,OpCode);
-    end
-end
-/*    logic [15:0] hp2 [64];
-logic [7:0]  ho2 [64], ha2 [64];
-logic [5:0]  hi2 = 0;
-int nser = 0;
-bit dumped2 = 0;
-always_ff @(posedge Clock) begin
-    if (cu.currentState == 4'd0) begin
-        hp2[hi2] <= Pc; ho2[hi2] <= cuOpcode; ha2[hi2] <= rf.registers[7];
-        hi2 <= hi2 + 1;
-    end
-    if (enableRam && ramAddr == 16'hFF01) begin
-        nser <= nser + 1;
-        if (nser == 12 && !dumped2) begin
-            dumped2 <= 1;
-            for (int i = 0; i < 64; i++)
-                $display("H pc=%h op=%h A=%h", hp2[6'(hi2 + i)], ho2[6'(hi2 + i)], ha2[6'(hi2 + i)]);
-        end
-    end
+
+/*always_ff @(posedge Clock) begin
+    $display(mmu.ram.mem[16'hFFA6]);
 end*/
 
-/*always_ff @(posedge Clock)
-    if (cyc > 119000 && cyc < 120300) begin
-        if (enableRam && ramAddr >= 16'hDF00)
-            $display("W   pc=%h sp=%h addr=%h data=%h", Pc, sp, ramAddr, ramIn);
-        if (cu.currentState == 4'd5)
-            $display("POP pc=%h sp=%h addr=%h data=%h", Pc, sp, ramAddr, ramOut);
-        if (cu.currentState == 4'd3 && cu.opCode1 == 8'hC9)
-            $display("RET pc=%h sp=%h addr=%h data=%h", Pc, sp, ramAddr, ramOut);
-    end
-
-always_ff @(posedge Clock)
-    if (cyc > 119700 && cyc < 120210 && cu.currentState == 4'd0)
-        $display("F pc=%h op=%h sp=%h", Pc, cuOpcode, sp);*/
-
-/*initial $display("BUILD ramfetch-v2");
-logic [31:0] heartbeat;
-always_ff @(posedge Clock) begin
-    if (Reset) begin
-        heartbeat <= 0;
-    end else begin
-        heartbeat <= heartbeat + 1;
-        if (heartbeat == 500000) begin
-            $display("HEARTBEAT: PC is currently at %h", Pc);
-            heartbeat <= 0;
-        end
-    end
-end*/
-//         always_ff @(posedge Clock) $display("PC=%04h OP=%02h Z=%b",
-//             Pc, cuOpcode, rf.registers[7]);
-//always_ff @(posedge Clock) if (cu.currentState == 4'd0) begin
-//    if (Pc == 16'hC7EF && {rf.registers[0], rf.registers[1]} == 16'h0000)
-//        $display("WAIT TIMEOUT cyc=%0d LY=%0d", cyc, lcdY);
-//    if (Pc == 16'hC7F9)
-//        $display("WAIT OK cyc=%0d LY=%0d", cyc, lcdY);
-//end
-
-
-        /*    logic [15:0] histPc [32];
-logic [7:0]  histOp [32];
-logic [4:0]  histIdx = 0;
-int initCount = 0;
-always_ff @(posedge Clock)
-    if (cu.currentState == 4'd0) begin
-        histPc[histIdx] <= Pc; histOp[histIdx] <= OpCode; histIdx <= histIdx + 1;
-        if (Pc == 16'h020C) begin
-            initCount <= initCount + 1;
-            if (initCount == 1)
-                for (int i = 0; i < 32; i++)
-                    $display("H PC=%h op=%h", histPc[5'(histIdx + i)], histOp[5'(histIdx + i)]);
-        end
-    end*/
-/*logic [15:0] hp [32];
-logic [7:0]  ho [32];
-logic [4:0]  hi = 0;
-bit dumped = 0;
-always_ff @(posedge Clock) begin
-    if (cu.currentState == 4'd0) begin
-        hp[hi] <= Pc; ho[hi] <= OpCode; hi <= hi + 1;
-    end
-    if (!dumped && enableRam && ramAddr == 16'hFF40 && ramIn == 8'h1e) begin
-        dumped <= 1;
-        $display("LCDC<=1e at cyc=%0d PC=%h, last 32 fetches:", cyc, Pc);
-        for (int i = 0; i < 32; i++)
-            $display("  H %h %h", hp[5'(hi + i)], ho[5'(hi + i)]);
-    end
-end
-
-logic armed = 0, chkDec;
-logic [15:0] chkHl;
-logic [7:0] chkF, chkA;
-always_ff @(posedge Clock) begin
-    if (!armed && cu.currentState == 4'd3 && (cu.opCode1 == 8'h2A || cu.opCode1 == 8'h3A)) begin
-        armed  <= 1;
-        chkHl  <= {rf.registers[4], rf.registers[5]};
-        chkF   <= rf.registers[6];
-        chkA   <= ramOut;                      // the byte about to go into A
-        chkDec <= (cu.opCode1 == 8'h3A);
-    end else if (armed && cu.currentState == 4'd0) begin
-        armed <= 0;
-        if (rf.registers[7] == chkA &&
-            {rf.registers[4], rf.registers[5]} == (chkDec ? chkHl - 16'd1 : chkHl + 16'd1) &&
-            rf.registers[6] == chkF)
-            ok2a <= ok2a + 1;
-        else begin
-            bad2a <= bad2a + 1;
-            if (bad2a < 10)
-                $display("BAD 2A/3A after PC=%h: HL0=%h F0=%h wantA=%h  gotA=%h HL=%h F=%h",
-                         Pc, chkHl, chkF, chkA, rf.registers[7],
-                         {rf.registers[4], rf.registers[5]}, rf.registers[6]);
-        end
-    end
-end*/
     // --- 2. VGA TIMING CONSTANTS (640x480 @ 60Hz) ---
     localparam H_DISPLAY = 640, H_FRONT = 16, H_SYNC = 96, H_BACK = 48, H_MAX = 800;
     localparam V_DISPLAY = 480, V_FRONT = 10, V_SYNC = 2,  V_BACK = 33, V_MAX = 525;
@@ -402,8 +290,6 @@ end*/
             3'b100: PcNext = {ramOut, 8'h00};
             3'b101: PcNext = {Pc[15:8], ramOut};
             3'b110: PcNext = {ramOut, Pc[7:0]};
-            //3'b100: PcNext = {Pc[15:8], ramOut};
-            //3'b101: PcNext = {ramOut, 8'h00};
             default: PcNext = Pc;
         endcase
 
@@ -413,12 +299,20 @@ end*/
             default: AluIn2 = cuDataOut;
         endcase
 
+        case(otherAluInputControl)
+            1'b0: AluIn1 = rfAluOut1;
+            1'b1: AluIn1 = ramOut;
+            default: AluIn1 = rfAluOut1;
+        endcase
+
         case(ramInSelect)
             2'b00: ramIn = rfOut2;
             2'b01: ramIn = Pc[7:0];
             2'b10: ramIn = Pc[15:8];
+            2'b11: ramIn = AluOut;
             default: ramIn = 8'h00;
         endcase
+
 
         if(highMemInputSelect) highMemWriteIn = cuDataOut;
         else highMemWriteIn = AluIn1;
